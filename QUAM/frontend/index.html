@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quam Youtube Transcript</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Quam Youtube Transcript</h1>
+    <div class="card">
+      <form id="transcript-form">
+        <div class="input-group">
+          <input type="text" id="youtube-url" placeholder="Input the YouTube URL" required />
+        </div>
+        <div class="input-group">
+          <label for="language-select">Transcript Language:</label>
+          <select id="language-select">
+            <option value="en">English</option>
+            <option value="zh-Hant">Cantonese</option>
+          </select>
+        </div>
+        <button type="submit">Send</button>
+      </form>
+      <div class="transcript-label">Transcript</div>
+      <div id="transcript-box" class="transcript-box"></div>
+    </div>
+    <div id="toast" class="toast"></div>
+  </div>
+  <script type="module" src="script.js"></script>
+  <footer style="text-align:center; margin-top: 32px; color: #888; font-size: 0.95rem;">
+    2025 @ Made with ❤️ from iDDY
+  </footer>
+</body>
+</html> 

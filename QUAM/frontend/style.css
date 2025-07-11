@@ -1,0 +1,159 @@
+body {
+  background: #e9edfa;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.container {
+  max-width: 480px;
+  margin: 48px auto 0 auto;
+  padding: 0 16px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 2rem;
+  color: #222;
+}
+
+.card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  padding: 32px 24px 24px 24px;
+  margin-bottom: 24px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+}
+
+.input-group label {
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+#youtube-url, #language-select {
+  padding: 10px 12px;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #bdbdbd;
+  margin-bottom: 0;
+}
+
+#language-select {
+  min-width: 140px;
+}
+
+button[type="submit"] {
+  width: 100%;
+  padding: 12px 0;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.2s;
+}
+
+button[type="submit"]:hover {
+  background: #1e40af;
+}
+
+.transcript-label {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 18px 0 6px 0;
+}
+
+.transcript-box {
+  min-height: 120px;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 1rem;
+  color: #222;
+  white-space: pre-wrap;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+
+.toast {
+  position: fixed;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 240px;
+  max-width: 90vw;
+  background: #ff4d4f;
+  color: #fff;
+  padding: 16px 32px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity 0.4s, top 0.4s;
+}
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+  top: 56px;
+}
+
+.form-group {
+  margin-top: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.form-group label {
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+@media (max-width: 1300px) {
+  .container {
+    max-width: 98vw;
+    padding: 24px 2vw 28px 2vw;
+  }
+}
+
+@media (max-width: 700px) {
+  .container {
+    max-width: 98vw;
+    padding: 16px 2vw 24px 2vw;
+  }
+  h1 {
+    font-size: 1.3rem;
+  }
+  .transcript-box {
+    font-size: 1rem;
+    padding: 12px 6px;
+  }
+  form {
+    flex-direction: column;
+    gap: 8px;
+  }
+  button {
+    width: 100%;
+  }
+}
+
+@media (min-width: 900px) {
+  .container {
+    max-width: 1000px;
+  }
+  .card {
+    padding: 64px 56px 56px 56px;
+  }
+} 
