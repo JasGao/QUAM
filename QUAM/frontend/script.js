@@ -120,7 +120,7 @@ async function fetchWhisperTranscript(youtubeUrl, lang, transcriptBox, model = '
   if (whisperLoading) whisperLoading.style.display = 'inline-block';
 
   try {
-    const startRes = await fetch('http://localhost:8000/transcribe-job', {
+    const startRes = await fetch('https://quamyo.duckdns.org/transcribe-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: youtubeUrl, lang, model }),
@@ -142,7 +142,7 @@ async function fetchWhisperTranscript(youtubeUrl, lang, transcriptBox, model = '
 
     while (!done && attempts < maxAttempts) {
       await new Promise(r => setTimeout(r, 5000));
-      const pollRes = await fetch(`http://localhost:8000/transcribe-job/${job_id}`);
+      const pollRes = await fetch(`https://quamyo.duckdns.org/transcribe-job/${job_id}`);
       if (!pollRes.ok) {
         const error = await pollRes.text();
         if (whisperLoading) whisperLoading.style.display = 'none';
