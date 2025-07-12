@@ -65,7 +65,7 @@ async function downloadAudioWithRapidAPI(videoId) {
       const data = await response.json();
       if (!data.file) throw new Error('No audio file URL in API response.');
       // Now fetch the audio file as a blob
-      const audioRes = await fetch(`http://localhost:8000/proxy-audio?url=${encodeURIComponent(data.file)}`);
+      const audioRes = await fetch(`https://quamyo.duckdns.org/proxy-audio?url=${encodeURIComponent(data.file)}`);
       if (!audioRes.ok) throw new Error('Failed to download audio file.');
       const blob = await audioRes.blob();
       return blob;
@@ -84,7 +84,7 @@ async function transcribeAudioBlob(audioBlob, lang, transcriptBox) {
   formData.append('file', audioBlob, 'audio.mp3');
   formData.append('lang', lang);
   try {
-    const response = await fetch('http://localhost:8000/transcribe-audio', {
+    const response = await fetch('https://quamyo.duckdns.org/transcribe-audio', {
       method: 'POST',
       body: formData
     });
