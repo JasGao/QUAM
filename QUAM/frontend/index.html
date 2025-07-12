@@ -10,20 +10,29 @@
   <div class="container">
     <h1>Quam Youtube Transcript</h1>
     <div class="card">
-      <form id="transcript-form">
-        <div class="input-group">
-          <input type="text" id="youtube-url" placeholder="Input the YouTube URL" required />
-        </div>
-        <div class="input-group">
-          <label for="language-select">Transcript Language:</label>
-          <select id="language-select">
-            <option value="en">English</option>
-            <option value="zh-Hant">Cantonese</option>
-          </select>
-        </div>
-        <button type="submit">Send</button>
-      </form>
-      <div class="transcript-label">Transcript</div>
+      <div class="form-modern">
+        <form id="transcript-form">
+          <div class="input-group">
+            <input type="text" id="youtube-url" placeholder="Input the YouTube URL" required />
+          </div>
+          <div class="input-group">
+            <label for="language-select">Transcript Language:</label>
+            <select id="language-select">
+              <option value="en">English</option>
+              <option value="zh-Hant">Cantonese</option>
+            </select>
+          </div>
+          <button type="submit">Send</button>
+        </form>
+      </div>
+      <div class="transcript-label">
+        Transcript
+        <span id="whisper-loading">
+          <span class="spinner" style="display:inline-block; width:18px; height:18px; border:3px solid #007bff; border-top:3px solid #fff; border-radius:50%; animation: spin 1s linear infinite; vertical-align:middle;"></span>
+          <span id="whisper-progress-msg"></span>
+        </span>
+      </div>
+      <div id="progress"></div>
       <div id="transcript-box" class="transcript-box"></div>
     </div>
     <div id="toast" class="toast"></div>
