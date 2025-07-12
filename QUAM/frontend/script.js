@@ -1,6 +1,6 @@
 // QUAM Youtube Transcript App JS
 
-import { API_KEYS } from './api-key.js';
+import { API_KEYS, AUDIO_API_KEYS } from './api-key.js';
 
 function extractVideoId(url) {
   // Handles various YouTube URL formats including live
@@ -43,6 +43,70 @@ async function fetchWithKeyRotation(videoId, lang) {
     }
   }
   throw lastError || new Error('All API keys exhausted or invalid.');
+}
+
+// --- Add: RapidAPI audio download function ---
+async function downloadAudioWithRapidAPI(videoId) {
+  const RAPIDAPI_AUDIO_URL = 'https://youtube-video-fast-downloader-24-7.p.rapidapi.com/download_audio';
+  let lastError = null;
+  for (let i = 0; i < AUDIO_API_KEYS.length; i++) {
+    try {
+      // Build the full URL with videoId and quality
+      const url = `${RAPIDAPI_AUDIO_URL}/${videoId}?quality=251`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-key': AUDIO_API_KEYS[i],
+          'x-rapidapi-host': 'youtube-video-fast-downloader-24-7.p.rapidapi.com'
+        }
+      });
+      if (response.status === 429) continue;
+      if (!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      if (!data.file) throw new Error('No audio file URL in API response.');
+      // Now fetch the audio file as a blob
+      const audioRes = await fetch(`http://localhost:8000/proxy-audio?url=${encodeURIComponent(data.file)}`);
+      if (!audioRes.ok) throw new Error('Failed to download audio file.');
+      const blob = await audioRes.blob();
+      return blob;
+    } catch (err) {
+      lastError = err;
+      if (!err.message.includes('429')) break;
+    }
+  }
+  throw lastError || new Error('All audio API keys exhausted or invalid.');
+}
+
+// --- Add: Send audio to backend for Whisper transcription ---
+async function transcribeAudioBlob(audioBlob, lang, transcriptBox) {
+  transcriptBox.textContent = 'Uploading audio and transcribing with Whisper...';
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'audio.mp3');
+  formData.append('lang', lang);
+  try {
+    const response = await fetch('http://localhost:8000/transcribe-audio', {
+      method: 'POST',
+      body: formData
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const data = await response.json();
+    if (data.transcript) {
+      transcriptBox.textContent = data.transcript + '\n\n(Transcribed by Whisper)';
+      transcriptBox.style.color = '#222';
+    } else {
+      showToast('No transcript returned.');
+      transcriptBox.textContent = '';
+    }
+  } catch (err) {
+    showToast('Audio transcription error: ' + (err.message || err));
+    transcriptBox.textContent = '';
+  }
+}
+
+// --- Add: Show/hide manual upload section ---
+function showManualUploadSection(show) {
+  const section = document.getElementById('manual-upload-section');
+  if (section) section.style.display = show ? '' : 'none';
 }
 
 let currentJobId = null;
@@ -108,7 +172,12 @@ async function fetchWhisperTranscript(youtubeUrl, lang, transcriptBox, model = '
         if (whisperLoading) whisperLoading.style.display = 'none';
         if (whisperProgressMsg) whisperProgressMsg.textContent = '';
       } else if (job.status === 'error') {
-        showToast('Whisper error: ' + (job.error || 'Unknown error'));
+        let errorMsg = job.error || 'Unknown error';
+        if (errorMsg.includes('Sign in to confirm you’re not a bot')) {
+          showToast('Due to YouTube restrictions, you need to download the video manually and upload it here for transcription.');
+        } else {
+          showToast('Whisper error: ' + errorMsg);
+        }
         transcriptBox.textContent = '';
         done = true;
         if (whisperLoading) whisperLoading.style.display = 'none';
@@ -135,7 +204,12 @@ async function fetchWhisperTranscript(youtubeUrl, lang, transcriptBox, model = '
       if (whisperProgressMsg) whisperProgressMsg.textContent = '';
     }
   } catch (err) {
-    showToast('Whisper error: ' + (err.message || err));
+    let errorMsg = err.message || err;
+    if (typeof errorMsg === 'string' && errorMsg.includes('Sign in to confirm you’re not a bot')) {
+      showToast('Due to YouTube restrictions, you need to download the video manually and upload it here for transcription.');
+    } else {
+      showToast('Whisper error: ' + errorMsg);
+    }
     transcriptBox.textContent = '';
     if (whisperLoading) whisperLoading.style.display = 'none';
     if (whisperProgressMsg) whisperProgressMsg.textContent = '';
@@ -145,21 +219,15 @@ async function fetchWhisperTranscript(youtubeUrl, lang, transcriptBox, model = '
   }
 }
 
+// --- Add: Main workflow update ---
 document.getElementById('transcript-form').addEventListener('submit', async function (e) {
   e.preventDefault();
   const url = document.getElementById('youtube-url').value.trim();
   const lang = document.getElementById('language-select').value;
   const transcriptBox = document.getElementById('transcript-box');
-  const progressDiv = document.getElementById('progress');
-  const cancelBtn = document.getElementById('cancel-btn');
-
-  if (currentJobId) {
-    await fetch(`http://localhost:8000/transcribe-job/${currentJobId}/cancel`, { method: 'POST' });
-    showToast('Previous transcription cancelled.');
-    currentJobId = null;
-  }
-
+  showManualUploadSection(false);
   transcriptBox.textContent = '';
+  transcriptBox.style.color = '#222';
 
   const videoId = extractVideoId(url);
   if (!videoId) {
@@ -169,35 +237,55 @@ document.getElementById('transcript-form').addEventListener('submit', async func
   }
 
   transcriptBox.textContent = 'Loading...';
-  transcriptBox.style.color = '#222';
 
-  if (isLiveStream(url) && videoId) {
-    showToast('Live stream detected. Using Whisper for transcription...');
-    await fetchWhisperTranscript(url, lang, transcriptBox);
-    return;
-  }
-
+  // 1. Try RapidAPI transcript
   let rapidApiLang = lang;
   if (lang === 'zh-Hant') rapidApiLang = 'zh-HK';
-
   try {
     const data = await fetchWithKeyRotation(videoId, rapidApiLang);
-    console.log('API response:', data);
     if (Array.isArray(data) && data[0] && data[0].transcriptionAsText) {
       transcriptBox.textContent = data[0].transcriptionAsText;
       transcriptBox.style.color = '#222';
       return;
     }
-    await fetchWhisperTranscript(url, lang, transcriptBox);
   } catch (err) {
-    await fetchWhisperTranscript(url, lang, transcriptBox);
+    // ignore, try next step
   }
+
+  // 2. Try to download audio via RapidAPI and send to backend
+  try {
+    transcriptBox.textContent = 'Trying to download audio for Whisper transcription...';
+    const audioBlob = await downloadAudioWithRapidAPI(videoId);
+    await transcribeAudioBlob(audioBlob, lang, transcriptBox);
+    return;
+  } catch (err) {
+    showToast('Automatic audio download failed: ' + (err.message || err));
+    transcriptBox.textContent = '';
+  }
+
+  // 3. Show manual upload section
+  showToast('Unable to get transcript or audio automatically. Please upload audio file for transcription.');
+  showManualUploadSection(true);
+});
+
+// --- Add: Manual audio upload handler ---
+document.getElementById('audio-upload-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const fileInput = document.getElementById('audio-file');
+  const transcriptBox = document.getElementById('transcript-box');
+  const lang = document.getElementById('language-select').value;
+  if (!fileInput.files || !fileInput.files[0]) {
+    showToast('Please select an audio file.');
+    return;
+  }
+  const audioBlob = fileInput.files[0];
+  await transcribeAudioBlob(audioBlob, lang, transcriptBox);
 });
 
 // Cancel button handler
 document.getElementById('cancel-btn').onclick = async function() {
   if (currentJobId) {
-    await fetch(`http://localhost:8000/transcribe-job/${currentJobId}/cancel`, { method: 'POST' });
+    await fetch(`http://8.222.227.197:8000/transcribe-job/${currentJobId}/cancel`, { method: 'POST' });
     showToast('Cancel requested.');
   }
 };
@@ -207,7 +295,7 @@ window.addEventListener('beforeunload', async function (e) {
   if (currentJobId) {
     // Use navigator.sendBeacon for reliability on unload
     navigator.sendBeacon(
-      `http://localhost:8000/transcribe-job/${currentJobId}/cancel`
+      `http://8.222.227.197:8000/transcribe-job/${currentJobId}/cancel`
     );
     currentJobId = null;
   }
