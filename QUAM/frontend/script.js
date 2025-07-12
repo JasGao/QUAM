@@ -3,11 +3,15 @@
 import { API_KEYS } from './api-key.js';
 
 function extractVideoId(url) {
-  // Handles various YouTube URL formats
+  // Handles various YouTube URL formats including live
   const match = url.match(
-    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([\w-]{11})/
+    /(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/|live\/))([\w-]{11})/
   );
   return match ? match[1] : null;
+}
+
+function isLiveStream(url) {
+  return url.includes('/live/') || url.includes('&t=');
 }
 
 function showToast(message) {
@@ -55,10 +59,13 @@ async function fetchWhisperTranscript(youtubeUrl, lang, transcriptBox) {
       throw new Error(error);
     }
     const { job_id } = await startRes.json();
-    // Poll for result
+    
+    // Poll for result with longer timeout for live streams
     let attempts = 0;
     let done = false;
-    while (!done && attempts < 120) { // up to 10 minutes if polling every 5s
+    const maxAttempts = isLiveStream(youtubeUrl) ? 300 : 120; // 25 min for live, 10 min for regular
+    
+    while (!done && attempts < maxAttempts) {
       await new Promise(r => setTimeout(r, 5000));
       const pollRes = await fetch(`http://localhost:8000/transcribe-job/${job_id}`);
       if (!pollRes.ok) {
@@ -107,8 +114,15 @@ document.getElementById('transcript-form').addEventListener('submit', async func
   transcriptBox.textContent = 'Loading...';
   transcriptBox.style.color = '#222';
 
+  // Check if it's a live stream
+  if (isLiveStream(url)) {
+    showToast('Live stream detected. Using Whisper for transcription...');
+    await fetchWhisperTranscript(url, lang, transcriptBox);
+    return;
+  }
+
   try {
-    // 1. Try RapidAPI
+    // 1. Try RapidAPI for regular videos
     const data = await fetchWithKeyRotation(videoId, lang);
     console.log('API response:', data);
     if (Array.isArray(data) && data[0] && data[0].transcriptionAsText) {
@@ -119,7 +133,7 @@ document.getElementById('transcript-form').addEventListener('submit', async func
     // 2. Fallback to Whisper if no transcript found
     await fetchWhisperTranscript(url, lang, transcriptBox);
   } catch (err) {
-    // 2. Fallback to Whisper if RapidAPI fails
+    // 3. Fallback to Whisper if RapidAPI fails
     await fetchWhisperTranscript(url, lang, transcriptBox);
   }
 }); 
