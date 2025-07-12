@@ -5,4 +5,10 @@ const API_KEYS = [
   // Add more API keys here as needed
 ];
 
-export { API_KEYS }; 
+const AUDIO_API_KEYS = [
+  // Add your audio RapidAPI keys here, e.g.:
+  '9f6384f00amsh216bb458e5b2ef6p19b738jsn366cb8242758',
+  '543f0286dcmsh50a65d23af85fe7p11666fjsnd26d12d6e6b8',
+];
+
+export { API_KEYS, AUDIO_API_KEYS }; 

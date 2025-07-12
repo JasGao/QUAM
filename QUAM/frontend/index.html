@@ -35,6 +35,15 @@
       <div id="progress"></div>
       <div id="transcript-box" class="transcript-box"></div>
     </div>
+    <div id="manual-upload-section" style="display:none; margin-top:20px;">
+      <form id="audio-upload-form">
+        <div class="input-group">
+          <label for="audio-file">Or upload audio file (mp3, wav, m4a):</label>
+          <input type="file" id="audio-file" accept="audio/*" />
+        </div>
+        <button type="submit">Transcribe Uploaded Audio</button>
+      </form>
+    </div>
     <div id="toast" class="toast"></div>
   </div>
   <script type="module" src="script.js"></script>

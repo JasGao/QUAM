@@ -7,6 +7,13 @@ import os
 import uuid
 import threading
 from pydub import AudioSegment
+from fastapi import UploadFile, File, Form
+from fastapi.responses import JSONResponse
+import requests
+from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse
+import tempfile
+import subprocess
 
 app = FastAPI()
 
@@ -123,4 +130,71 @@ async def get_transcription(job_id: str):
     job = jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job 
+    return job
+
+# --- New: /transcribe-audio endpoint for direct audio file upload ---
+# --- Utility: Convert webm to mp3 using ffmpeg ---
+def convert_to_mp3(input_path, output_path):
+    subprocess.run([
+        "ffmpeg", "-y", "-i", input_path, output_path
+    ], check=True)
+
+@app.post("/transcribe-audio")
+async def transcribe_audio(file: UploadFile = File(...), lang: str = Form(None)):
+    temp_audio_filename = f"uploaded_{uuid.uuid4()}.mp3"
+    try:
+        # Save uploaded file
+        with open(temp_audio_filename, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        print("Saved uploaded file")
+
+        # If the file is .webm, convert to .mp3
+        if file.filename.endswith('.webm'):
+            mp3_path = temp_audio_filename.replace('.mp3', '_converted.mp3')
+            convert_to_mp3(temp_audio_filename, mp3_path)
+            audio_path = mp3_path
+        else:
+            audio_path = temp_audio_filename
+
+        model = whisper.load_model('small')
+        print("Before splitting audio")
+        chunk_files = split_audio(audio_path)
+        print("Splitting audio")
+        partial_transcript = ""
+        for idx, chunk_file in enumerate(chunk_files):
+            # --- Language normalization ---
+            lang_norm = lang
+            if lang and lang.lower() in ["zh-hant", "zh-hans"]:
+                lang_norm = "zh"
+            # ------------------------------
+            result = model.transcribe(chunk_file, language=lang_norm)
+            partial_transcript += result["text"] + "\n"
+            os.remove(chunk_file)  # Clean up chunk file after use
+        print("Starting transcription")
+        print("Finished transcription")
+
+        return JSONResponse({"transcript": partial_transcript.strip()})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    finally:
+        if os.path.exists(temp_audio_filename):
+            os.remove(temp_audio_filename)
+        if file.filename.endswith('.webm'):
+            if os.path.exists(mp3_path):
+                os.remove(mp3_path)
+
+@app.get("/proxy-audio")
+def proxy_audio(url: str):
+    print(f"Proxying audio from: {url}")
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+    r = requests.get(url, headers=headers)
+    print(f"Downloaded audio response: {r.status_code}")
+    if r.status_code != 200:
+        return JSONResponse({"error": "Failed to fetch audio"}, status_code=500)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+        tmp.write(r.content)
+        tmp_path = tmp.name
+    return FileResponse(tmp_path, media_type="audio/webm") 
