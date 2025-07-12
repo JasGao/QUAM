@@ -56,7 +56,7 @@ async function fetchWhisperTranscript(youtubeUrl, lang, transcriptBox, model = '
   if (whisperLoading) whisperLoading.style.display = 'inline-block';
 
   try {
-    const startRes = await fetch('fetch('http://8.222.227.197:8000/transcribe-job', {
+    const startRes = await fetch('http://8.222.227.197:8000/transcribe-job', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: youtubeUrl, lang, model }),
